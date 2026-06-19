@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TETRIS — Retro Games Archive</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #000;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom, transparent 0px, transparent 2px,
+        rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ===== HEADER ===== */
+    .page-header {
+      width: 100%;
+      background: #00001a;
+      border-bottom: 3px solid #0088ff;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .page-header h1 {
+      font-size: 22px;
+      color: #0088ff;
+      letter-spacing: 4px;
+      text-shadow: 0 0 10px #0088ff;
+    }
+
+    .back-btn {
+      background: #000;
+      color: #ffff00;
+      border: 2px outset #888;
+      padding: 5px 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      background: #000033;
+      color: #0088ff;
+      border-style: inset;
+    }
+
+    /* ===== GAME LAYOUT ===== */
+    .game-wrapper {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      padding: 20px;
+    }
+
+    /* ===== CANVAS ===== */
+    canvas#tetrisCanvas {
+      border: 3px solid #0088ff;
+      background: #000;
+      box-shadow: 0 0 20px rgba(0,136,255,0.3);
+      display: block;
+    }
+
+    /* ===== SIDE PANEL ===== */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 160px;
+    }
+
+    .side-box {
+      border: 2px solid #0088ff;
+      background: #00000a;
+      padding: 10px;
+    }
+
+    .side-box-title {
+      color: #0088ff;
+      font-size: 11px;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #0044aa;
+      padding-bottom: 4px;
+    }
+
+    .side-value {
+      font-size: 28px;
+      color: #ffff00;
+      text-shadow: 0 0 8px #ffff00;
+      text-align: center;
+    }
+
+    .side-value-sm {
+      font-size: 20px;
+      color: #00ff41;
+      text-align: center;
+    }
+
+    /* ===== NEXT PIECE CANVAS ===== */
+    canvas#nextCanvas {
+      display: block;
+      margin: 0 auto;
+      border: 1px solid #003366;
+      background: #000;
+    }
+
+    /* ===== STATUS ===== */
+    .game-status {
+      text-align: center;
+      font-size: 13px;
+      color: #ffff00;
+      letter-spacing: 2px;
+      margin-top: 4px;
+    }
+
+    .game-status.blink { animation: blink-anim 0.7s step-end infinite; }
+
+    @keyframes blink-anim {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* ===== BUTTONS ===== */
+    .start-btn {
+      background: #000033;
+      color: #0088ff;
+      border: 2px solid #0088ff;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      width: 100%;
+    }
+
+    .start-btn:hover { background: #000055; }
+    .start-btn:active { border-style: inset; }
+
+    /* ===== CONTROLS LIST ===== */
+    .controls-list {
+      font-size: 11px;
+      color: #666;
+      line-height: 2;
+    }
+
+    .controls-list span { color: #00ffff; }
+
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      border-top: 1px solid #111;
+      font-size: 11px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <h1>TETRIS</h1>
+  <a href="/" class="back-btn">◄ VOLTAR PARA HOME</a>
+</div>
+
+<!-- GAME WRAPPER -->
+<div class="game-wrapper">
+
+  <!-- TETRIS CANVAS (10 cols × 20 rows, cada cell 30px) -->
+  <canvas id="tetrisCanvas" width="300" height="600"></canvas>
+
+  <!-- SIDE PANEL -->
+  <div class="side-panel">
+
+    <!-- SCORE -->
+    <div class="side-box">
+      <div class="side-box-title">PONTOS</div>
+      <div class="side-value" id="scoreVal">0</div>
+    </div>
+
+    <!-- LINES -->
+    <div class="side-box">
+      <div class="side-box-title">LINHAS</div>
+      <div class="side-value-sm" id="linesVal">0</div>
+    </div>
+
+    <!-- LEVEL -->
+    <div class="side-box">
+      <div class="side-box-title">NÍVEL</div>
+      <div class="side-value-sm" id="levelVal">1</div>
+    </div>
+
+    <!-- NEXT PIECE -->
+    <div class="side-box">
+      <div class="side-box-title">PRÓXIMA</div>
+      <canvas id="nextCanvas" width="120" height="80"></canvas>
+    </div>
+
+    <!-- BEST SCORE -->
+    <div class="side-box">
+      <div class="side-box-title">RECORDE</div>
+      <div class="side-value-sm" id="bestVal">0</div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="game-status blink" id="statusMsg">PRESSIONE<br>INICIAR</div>
+
+    <!-- START -->
+    <button class="start-btn" id="startBtn">[ INICIAR ]</button>
+
+    <!-- CONTROLS -->
+    <div class="side-box">
+      <div class="side-box-title">CONTROLES</div>
+      <div class="controls-list">
+        <span>←→</span> mover<br>
+        <span>↑</span> girar<br>
+        <span>↓</span> descer<br>
+        <span>SPC</span> drop<br>
+        <span>P</span> pausar
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>© 1998 Retro Games Archive — TETRIS v1.0</footer>
+
+<script>
+  // ===================================================
+  //  TETRIS — JavaScript puro com Canvas
+  // ===================================================
+
+  const canvas    = document.getElementById('tetrisCanvas');
+  const ctx       = canvas.getContext('2d');
+  const nextCanvas = document.getElementById('nextCanvas');
+  const nctx      = nextCanvas.getContext('2d');
+
+  const COLS = 10, ROWS = 20, CS = 30; // CS = cell size
+
+  // ---- DOM ----
+  const scoreEl  = document.getElementById('scoreVal');
+  const linesEl  = document.getElementById('linesVal');
+  const levelEl  = document.getElementById('levelVal');
+  const bestEl   = document.getElementById('bestVal');
+  const statusEl = document.getElementById('statusMsg');
+  const startBtn = document.getElementById('startBtn');
+
+  // ---- Peças Tetris (formato de matrizes) ----
+  // Cada peça: { shape: [[]], color: '#...', name: 'X' }
+  const PIECES = [
+    // I
+    {
+      shape: [[1,1,1,1]],
+      color: '#00ffff', name: 'I'
+    },
+    // O
+    {
+      shape: [[1,1],[1,1]],
+      color: '#ffff00', name: 'O'
+    },
+    // T
+    {
+      shape: [[0,1,0],[1,1,1]],
+      color: '#ff00ff', name: 'T'
+    },
+    // S
+    {
+      shape: [[0,1,1],[1,1,0]],
+      color: '#00ff41', name: 'S'
+    },
+    // Z
+    {
+      shape: [[1,1,0],[0,1,1]],
+      color: '#ff4444', name: 'Z'
+    },
+    // J
+    {
+      shape: [[1,0,0],[1,1,1]],
+      color: '#0044ff', name: 'J'
+    },
+    // L
+    {
+      shape: [[0,0,1],[1,1,1]],
+      color: '#ff8800', name: 'L'
+    },
+  ];
+
+  // ---- Estado ----
+  let board, current, currentX, currentY, next;
+  let score, lines, level, bestScore;
+  let gameState = 'idle'; // 'idle'|'playing'|'paused'|'gameover'
+  let dropTimer, dropInterval;
+
+  bestScore = parseInt(localStorage.getItem('tetris_best') || '0', 10);
+  bestEl.textContent = bestScore;
+
+  // ---- Criar tabuleiro vazio ----
+  function createBoard() {
+    return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  }
+
+  // ---- Rotacionar matriz ----
+  function rotate(matrix) {
+    const rows = matrix.length, cols = matrix[0].length;
+    const result = Array.from({ length: cols }, () => Array(rows).fill(0));
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        result[c][rows - 1 - r] = matrix[r][c];
+    return result;
+  }
+
+  // ---- Peça aleatória ----
+  function randomPiece() {
+    const p = PIECES[Math.floor(Math.random() * PIECES.length)];
+    return { shape: p.shape.map(r => [...r]), color: p.color, name: p.name };
+  }
+
+  // ---- Verificar colisão ----
+  function collides(shape, ox, oy) {
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (!shape[r][c]) continue;
+        const nx = ox + c, ny = oy + r;
+        if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+        if (ny >= 0 && board[ny][nx]) return true;
+      }
+    }
+    return false;
+  }
+
+  // ---- Fixar peça no tabuleiro ----
+  function lockPiece() {
+    for (let r = 0; r < current.shape.length; r++)
+      for (let c = 0; c < current.shape[r].length; c++)
+        if (current.shape[r][c]) {
+          const ny = currentY + r;
+          if (ny < 0) { endGame(); return; }
+          board[ny][currentX + c] = current.color;
+        }
+    clearLines();
+    spawnPiece();
+  }
+
+  // ---- Limpar linhas completas ----
+  function clearLines() {
+    let cleared = 0;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (board[r].every(c => c !== 0)) {
+        board.splice(r, 1);
+        board.unshift(Array(COLS).fill(0));
+        cleared++;
+        r++; // rever mesma linha
+      }
+    }
+    if (cleared > 0) {
+      // Pontuação: 1→40, 2→100, 3→300, 4→1200 (×nível)
+      const pts = [0, 40, 100, 300, 1200];
+      score += (pts[cleared] || 0) * level;
+      lines += cleared;
+      level = Math.floor(lines / 10) + 1;
+      dropInterval = Math.max(80, 700 - (level - 1) * 60);
+      updateHUD();
+    }
+  }
+
+  // ---- Spawnar nova peça ----
+  function spawnPiece() {
+    current  = next;
+    next     = randomPiece();
+    currentX = Math.floor((COLS - current.shape[0].length) / 2);
+    currentY = 0;
+    drawNext();
+
+    if (collides(current.shape, currentX, currentY)) {
+      endGame();
+    }
+  }
+
+  // ---- Queda rápida (hard drop) ----
+  function hardDrop() {
+    while (!collides(current.shape, currentX, currentY + 1)) currentY++;
+    score += 2;
+    lockPiece();
+    updateHUD();
+  }
+
+  // ---- Soft drop ----
+  function softDrop() {
+    if (!collides(current.shape, currentX, currentY + 1)) {
+      currentY++;
+      score += 1;
+      updateHUD();
+    } else {
+      lockPiece();
+    }
+  }
+
+  // ---- Timer de queda ----
+  function startDropTimer() {
+    if (dropTimer) clearInterval(dropTimer);
+    dropTimer = setInterval(() => {
+      if (gameState !== 'playing') return;
+      softDrop();
+      drawBoard();
+    }, dropInterval);
+  }
+
+  // ---- Calcular posição ghost ----
+  function ghostY() {
+    let gy = currentY;
+    while (!collides(current.shape, currentX, gy + 1)) gy++;
+    return gy;
+  }
+
+  // ---- Desenhar tabuleiro ----
+  function drawBoard() {
+    // Fundo
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Grade
+    ctx.strokeStyle = '#0a0a1a';
+    ctx.lineWidth = 0.5;
+    for (let c = 0; c <= COLS; c++) {
+      ctx.beginPath(); ctx.moveTo(c*CS, 0); ctx.lineTo(c*CS, ROWS*CS); ctx.stroke();
+    }
+    for (let r = 0; r <= ROWS; r++) {
+      ctx.beginPath(); ctx.moveTo(0, r*CS); ctx.lineTo(COLS*CS, r*CS); ctx.stroke();
+    }
+
+    // Tabuleiro (peças travadas)
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (board[r][c]) drawCell(ctx, c, r, board[r][c], CS);
+      }
+    }
+
+    if (gameState !== 'playing' && gameState !== 'paused') return;
+
+    // Ghost piece
+    if (current) {
+      const gy = ghostY();
+      ctx.globalAlpha = 0.2;
+      current.shape.forEach((row, r) => {
+        row.forEach((val, c) => {
+          if (val) drawCell(ctx, currentX + c, gy + r, current.color, CS);
+        });
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    // Peça atual
+    if (current) {
+      current.shape.forEach((row, r) => {
+        row.forEach((val, c) => {
+          if (val) drawCell(ctx, currentX + c, currentY + r, current.color, CS);
+        });
+      });
+    }
+
+    // Overlay de pausa
+    if (gameState === 'paused') {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffff00';
+      ctx.font      = 'bold 32px Courier New';
+      ctx.shadowColor = '#ffff00';
+      ctx.shadowBlur  = 16;
+      ctx.fillText('PAUSADO', canvas.width/2, canvas.height/2);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ---- Desenhar célula individual ----
+  function drawCell(context, col, row, color, size) {
+    const x = col * size, y = row * size;
+    // Sombra/brilho
+    context.shadowColor = color;
+    context.shadowBlur  = 6;
+    context.fillStyle   = color;
+    context.fillRect(x + 1, y + 1, size - 2, size - 2);
+
+    // Highlight superior
+    context.shadowBlur = 0;
+    context.fillStyle  = 'rgba(255,255,255,0.25)';
+    context.fillRect(x + 1, y + 1, size - 2, 4);
+    context.fillRect(x + 1, y + 1, 4, size - 2);
+
+    // Sombra inferior
+    context.fillStyle = 'rgba(0,0,0,0.3)';
+    context.fillRect(x + 1, y + size - 5, size - 2, 4);
+  }
+
+  // ---- Desenhar próxima peça ----
+  function drawNext() {
+    nctx.fillStyle = '#000';
+    nctx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+
+    if (!next) return;
+
+    const ncs = 20;
+    const offX = Math.floor((nextCanvas.width  - next.shape[0].length * ncs) / 2);
+    const offY = Math.floor((nextCanvas.height - next.shape.length * ncs) / 2);
+
+    next.shape.forEach((row, r) => {
+      row.forEach((val, c) => {
+        if (val) drawCell(nctx, 0, 0, next.color, ncs);
+        // recalculate position
+      });
+    });
+
+    // Redraw correctly with offsets
+    nctx.fillStyle = '#000';
+    nctx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+
+    next.shape.forEach((row, r) => {
+      row.forEach((val, c) => {
+        if (!val) return;
+        const x = offX + c * ncs;
+        const y = offY + r * ncs;
+        nctx.shadowColor = next.color;
+        nctx.shadowBlur  = 5;
+        nctx.fillStyle   = next.color;
+        nctx.fillRect(x+1, y+1, ncs-2, ncs-2);
+        nctx.shadowBlur  = 0;
+        nctx.fillStyle   = 'rgba(255,255,255,0.2)';
+        nctx.fillRect(x+1, y+1, ncs-2, 3);
+      });
+    });
+  }
+
+  // ---- Atualizar HUD ----
+  function updateHUD() {
+    scoreEl.textContent = score;
+    linesEl.textContent = lines;
+    levelEl.textContent = level;
+    if (score > bestScore) {
+      bestScore = score;
+      bestEl.textContent = bestScore;
+      localStorage.setItem('tetris_best', bestScore);
+    }
+  }
+
+  // ---- Fim de jogo ----
+  function endGame() {
+    gameState = 'gameover';
+    clearInterval(dropTimer);
+
+    ctx.fillStyle = 'rgba(255,0,0,0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign  = 'center';
+    ctx.fillStyle  = '#ff0000';
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur  = 20;
+    ctx.font = 'bold 36px Courier New';
+    ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 20);
+    ctx.shadowBlur = 0;
+    ctx.font = '14px Courier New';
+    ctx.fillStyle = '#ffff00';
+    ctx.fillText(`Pontos: ${score}`, canvas.width/2, canvas.height/2 + 20);
+
+    statusEl.innerHTML = `GAME<br>OVER!`;
+    statusEl.classList.add('blink');
+    startBtn.textContent = '[ JOGAR NOVAMENTE ]';
+  }
+
+  // ---- Iniciar jogo ----
+  function startGame() {
+    board    = createBoard();
+    score    = 0;
+    lines    = 0;
+    level    = 1;
+    dropInterval = 700;
+    gameState = 'playing';
+
+    next    = randomPiece();
+    spawnPiece();
+    drawBoard();
+    drawNext();
+    updateHUD();
+    startDropTimer();
+
+    statusEl.innerHTML = '';
+    statusEl.classList.remove('blink');
+    startBtn.textContent = '[ REINICIAR ]';
+  }
+
+  // ---- Controles de teclado ----
+  document.addEventListener('keydown', e => {
+    if (gameState !== 'playing' && e.key !== 'p' && e.key !== 'P') return;
+
+    switch(e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        if (!collides(current.shape, currentX - 1, currentY)) currentX--;
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        if (!collides(current.shape, currentX + 1, currentY)) currentX++;
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        softDrop();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        const rotated = rotate(current.shape);
+        if (!collides(rotated, currentX, currentY)) current.shape = rotated;
+        // Wall kick simples
+        else if (!collides(rotated, currentX + 1, currentY)) { current.shape = rotated; currentX++; }
+        else if (!collides(rotated, currentX - 1, currentY)) { current.shape = rotated; currentX--; }
+        break;
+      case ' ':
+        e.preventDefault();
+        hardDrop();
+        break;
+      case 'p': case 'P':
+        if (gameState === 'playing') {
+          gameState = 'paused';
+          statusEl.innerHTML = 'PAUSADO';
+          statusEl.classList.add('blink');
+        } else if (gameState === 'paused') {
+          gameState = 'playing';
+          statusEl.innerHTML = '';
+          statusEl.classList.remove('blink');
+        }
+        break;
+    }
+
+    drawBoard();
+  });
+
+  // ---- Botão ----
+  startBtn.addEventListener('click', startGame);
+
+  // ---- Tela inicial ----
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign  = 'center';
+  ctx.fillStyle  = '#0088ff';
+  ctx.shadowColor = '#0088ff';
+  ctx.shadowBlur  = 20;
+  ctx.font = 'bold 40px Courier New';
+  ctx.fillText('TETRIS', canvas.width/2, canvas.height/2 - 20);
+  ctx.shadowBlur = 0;
+  ctx.font = '14px Courier New';
+  ctx.fillStyle = '#555';
+  ctx.fillText('Alexey Pajitnov — 1984', canvas.width/2, canvas.height/2 + 20);
+
+  bestEl.textContent = bestScore;
+</script>
+</body>
+</html>

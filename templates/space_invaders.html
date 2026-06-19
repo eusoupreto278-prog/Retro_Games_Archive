@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPACE INVADERS — Retro Games Archive</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #000;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom, transparent 0px, transparent 2px,
+        rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ===== HEADER ===== */
+    .page-header {
+      width: 100%;
+      background: #0a0000;
+      border-bottom: 3px solid #ff4444;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .page-header h1 {
+      font-size: 20px;
+      color: #ff4444;
+      letter-spacing: 4px;
+      text-shadow: 0 0 10px #ff4444;
+    }
+
+    .back-btn {
+      background: #000;
+      color: #ffff00;
+      border: 2px outset #888;
+      padding: 5px 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      background: #1a0000;
+      color: #ff4444;
+      border-style: inset;
+    }
+
+    /* ===== GAME AREA ===== */
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 12px;
+      flex: 1;
+    }
+
+    /* ===== HUD ===== */
+    .hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 600px;
+      background: #050505;
+      border: 2px solid #ff4444;
+      padding: 8px 20px;
+    }
+
+    .hud-item { text-align: center; }
+    .hud-label { font-size: 10px; color: #555; letter-spacing: 3px; }
+    .hud-value { font-size: 28px; color: #ff4444; text-shadow: 0 0 8px #ff4444; }
+    .hud-value.green { color: #00ff41; text-shadow: 0 0 8px #00ff41; }
+
+    /* ===== CANVAS ===== */
+    canvas#siCanvas {
+      border: 3px solid #ff4444;
+      background: #000;
+      box-shadow: 0 0 20px rgba(255,68,68,0.25);
+      display: block;
+    }
+
+    /* ===== STATUS ===== */
+    .game-status {
+      font-size: 14px;
+      color: #ffff00;
+      letter-spacing: 3px;
+      height: 20px;
+    }
+
+    .game-status.blink { animation: blink-anim 0.8s step-end infinite; }
+
+    @keyframes blink-anim {
+      0%,100% { opacity: 1; }
+      50%     { opacity: 0; }
+    }
+
+    /* ===== CONTROLS ===== */
+    .controls-info {
+      display: flex;
+      gap: 30px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .controls-info span { color: #00ffff; }
+
+    /* ===== BUTTONS ===== */
+    .start-btn {
+      background: #1a0000;
+      color: #ff4444;
+      border: 2px solid #ff4444;
+      padding: 10px 30px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      letter-spacing: 3px;
+    }
+
+    .start-btn:hover { background: #330000; }
+    .start-btn:active { border-style: inset; }
+
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      border-top: 1px solid #111;
+      font-size: 11px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <h1>SPACE INVADERS</h1>
+  <a href="/" class="back-btn">◄ VOLTAR PARA HOME</a>
+</div>
+
+<!-- GAME CONTAINER -->
+<div class="game-container">
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-item">
+      <div class="hud-label">PONTOS</div>
+      <div class="hud-value" id="scoreVal">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">RECORD</div>
+      <div class="hud-value" id="bestVal">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">NÍVEL</div>
+      <div class="hud-value" id="levelVal">1</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">VIDAS</div>
+      <div class="hud-value green" id="livesVal">♥♥♥</div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="game-status blink" id="statusMsg">PRESSIONE INICIAR PARA JOGAR</div>
+
+  <!-- CANVAS -->
+  <canvas id="siCanvas" width="600" height="500"></canvas>
+
+  <!-- CONTROLS INFO -->
+  <div class="controls-info">
+    <div><span>A</span> / <span>←</span> MOVER ESQUERDA</div>
+    <div><span>D</span> / <span>→</span> MOVER DIREITA</div>
+    <div><span>ESPAÇO</span> ATIRAR</div>
+  </div>
+
+  <!-- START BUTTON -->
+  <button class="start-btn" id="startBtn">[ INICIAR JOGO ]</button>
+
+</div>
+
+<footer>© 1998 Retro Games Archive — SPACE INVADERS v1.0</footer>
+
+<script>
+  // ===================================================
+  //  SPACE INVADERS — JavaScript puro com Canvas
+  // ===================================================
+
+  const canvas = document.getElementById('siCanvas');
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // ---- DOM ----
+  const scoreEl  = document.getElementById('scoreVal');
+  const bestEl   = document.getElementById('bestVal');
+  const levelEl  = document.getElementById('levelVal');
+  const livesEl  = document.getElementById('livesVal');
+  const statusEl = document.getElementById('statusMsg');
+  const startBtn = document.getElementById('startBtn');
+
+  // ---- Constantes ----
+  const PLAYER_W  = 40, PLAYER_H = 20;
+  const BULLET_W  = 4,  BULLET_H = 12;
+  const INV_COLS  = 11, INV_ROWS = 5;
+  const INV_W     = 36, INV_H = 26;
+  const INV_PAD_X = 8,  INV_PAD_Y = 10;
+  const BUNKER_COUNT = 4;
+  const BULLET_COOLDOWN = 400; // ms
+
+  // ---- Tipos de invasores (pontos e forma visual) ----
+  const INV_TYPES = [
+    { pts: 30, color: '#ff00ff' }, // Row 0: topo
+    { pts: 20, color: '#ff4444' }, // Row 1-2
+    { pts: 20, color: '#ff4444' },
+    { pts: 10, color: '#ffffff' }, // Row 3-4
+    { pts: 10, color: '#ffffff' },
+  ];
+
+  // ---- Estado ----
+  let player, bullets, enemyBullets, invaders;
+  let bunkers;
+  let score, bestScore, level, lives;
+  let gameState = 'idle';
+  let animId;
+  let lastBullet = 0;
+  let invaderDX, invaderDY, invaderTimer, invaderDelay;
+  let mysteryShip;
+  let mysteryTimer;
+  let frame = 0;
+
+  bestScore = parseInt(localStorage.getItem('si_best') || '0', 10);
+  bestEl.textContent = bestScore;
+
+  // ---- Inicializar entidades ----
+  function init() {
+    score = 0; lives = 3; level = 1;
+
+    player = {
+      x: W / 2 - PLAYER_W / 2,
+      y: H - 50,
+      w: PLAYER_W, h: PLAYER_H,
+      speed: 5,
+    };
+
+    bullets      = [];
+    enemyBullets = [];
+    invaderDX    = 1;
+    invaderDY    = 0;
+    invaderTimer = 0;
+    invaderDelay = 700;
+
+    mysteryShip  = null;
+    mysteryTimer = 0;
+    frame = 0;
+
+    createInvaders();
+    createBunkers();
+    updateHUD();
+  }
+
+  function createInvaders() {
+    invaders = [];
+    const startX = 60, startY = 60;
+    for (let r = 0; r < INV_ROWS; r++) {
+      for (let c = 0; c < INV_COLS; c++) {
+        invaders.push({
+          x: startX + c * (INV_W + INV_PAD_X),
+          y: startY + r * (INV_H + INV_PAD_Y),
+          w: INV_W, h: INV_H,
+          alive: true,
+          type: r,
+          frame: 0,
+        });
+      }
+    }
+  }
+
+  function createBunkers() {
+    bunkers = [];
+    const bunkerW = 50, bunkerH = 30;
+    for (let i = 0; i < BUNKER_COUNT; i++) {
+      const bx = 60 + i * (W - 120) / (BUNKER_COUNT - 1) - bunkerW / 2;
+      // Bunker: array de blocos 5×3
+      const blocks = [];
+      for (let ry = 0; ry < 4; ry++) {
+        for (let cx = 0; cx < 10; cx++) {
+          // Arco na base (remover blocos do centro inferior)
+          if (ry === 3 && (cx >= 3 && cx <= 6)) continue;
+          if (ry === 2 && (cx >= 4 && cx <= 5)) continue;
+          blocks.push({
+            x: bx + cx * 5,
+            y: H - 110 + ry * 7,
+            w: 5, h: 7,
+            hp: 4,
+          });
+        }
+      }
+      bunkers.push(blocks);
+    }
+  }
+
+  // ---- Teclado ----
+  const keys = {};
+  document.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if ([' ', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+  });
+  document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+  // ---- Update ----
+  function update(now) {
+    frame++;
+
+    // --- Jogador ---
+    if ((keys['a'] || keys['A'] || keys['ArrowLeft'])  && player.x > 0)
+      player.x -= player.speed;
+    if ((keys['d'] || keys['D'] || keys['ArrowRight']) && player.x + player.w < W)
+      player.x += player.speed;
+
+    // --- Atirar ---
+    if (keys[' '] && now - lastBullet > BULLET_COOLDOWN) {
+      bullets.push({
+        x: player.x + player.w / 2 - BULLET_W / 2,
+        y: player.y,
+        w: BULLET_W, h: BULLET_H,
+        dy: -9,
+      });
+      lastBullet = now;
+    }
+
+    // --- Mover balas do jogador ---
+    bullets = bullets.filter(b => {
+      b.y += b.dy;
+      return b.y + b.h > 0;
+    });
+
+    // --- Mover balas dos inimigos ---
+    enemyBullets = enemyBullets.filter(b => {
+      b.y += b.dy;
+      return b.y < H;
+    });
+
+    // --- Mover invasores (ticker) ---
+    invaderTimer += 16; // ~60fps
+    if (invaderTimer >= invaderDelay) {
+      invaderTimer = 0;
+      moveInvaders();
+    }
+
+    // --- Tiro dos inimigos (aleatório) ---
+    if (frame % 45 === 0) {
+      const alive = invaders.filter(inv => inv.alive);
+      if (alive.length > 0) {
+        // Escolhe um invasor da fileira mais baixa de cada coluna
+        const cols = {};
+        alive.forEach(inv => {
+          const c = Math.round(inv.x / (INV_W + INV_PAD_X));
+          if (!cols[c] || inv.y > cols[c].y) cols[c] = inv;
+        });
+        const shooters = Object.values(cols);
+        const shooter  = shooters[Math.floor(Math.random() * shooters.length)];
+        enemyBullets.push({
+          x: shooter.x + shooter.w / 2 - 2,
+          y: shooter.y + shooter.h,
+          w: 3, h: 10,
+          dy: 4 + level * 0.5,
+        });
+      }
+    }
+
+    // --- Nave misteriosa ---
+    mysteryTimer += 16;
+    if (mysteryTimer > 15000) { // a cada 15s
+      mysteryTimer = 0;
+      mysteryShip = { x: -60, y: 30, w: 50, h: 20, speed: 2.5 };
+    }
+    if (mysteryShip) {
+      mysteryShip.x += mysteryShip.speed;
+      if (mysteryShip.x > W + 60) mysteryShip = null;
+    }
+
+    // --- Colisão: balas jogador × invasores ---
+    bullets.forEach((b, bi) => {
+      // Invasores
+      invaders.forEach(inv => {
+        if (!inv.alive) return;
+        if (rectOverlap(b, inv)) {
+          inv.alive = false;
+          bullets.splice(bi, 1);
+          score += INV_TYPES[inv.type].pts * level;
+          updateHUD();
+          // Acelerar com menos invasores
+          const alive = invaders.filter(i => i.alive).length;
+          invaderDelay = Math.max(80, 700 - (INV_COLS * INV_ROWS - alive) * 12 - (level - 1) * 80);
+        }
+      });
+
+      // Nave misteriosa
+      if (mysteryShip && rectOverlap(b, mysteryShip)) {
+        bullets.splice(bi, 1);
+        score += 100 * level;
+        mysteryShip = null;
+        updateHUD();
+      }
+
+      // Bunkers
+      bunkers.forEach(bunker => {
+        bunker.forEach((block, bki) => {
+          if (block.hp <= 0) return;
+          if (rectOverlap(b, block)) {
+            bullets.splice(bi, 1);
+            block.hp--;
+          }
+        });
+      });
+    });
+
+    // --- Colisão: balas inimigas × bunkers ---
+    enemyBullets.forEach((eb, ebi) => {
+      bunkers.forEach(bunker => {
+        bunker.forEach(block => {
+          if (block.hp <= 0) return;
+          if (rectOverlap(eb, block)) {
+            enemyBullets.splice(ebi, 1);
+            block.hp--;
+          }
+        });
+      });
+    });
+
+    // --- Colisão: balas inimigas × jogador ---
+    enemyBullets.forEach((eb, ebi) => {
+      if (rectOverlap(eb, player)) {
+        enemyBullets.splice(ebi, 1);
+        lives--;
+        updateHUD();
+        if (lives <= 0) { endGame('defeat'); return; }
+        // Flash: reposicionar jogador brevemente
+        player.x = W / 2 - PLAYER_W / 2;
+      }
+    });
+
+    // --- Invasores chegaram ao chão / ao jogador ---
+    invaders.forEach(inv => {
+      if (!inv.alive) return;
+      if (inv.y + inv.h >= player.y) endGame('defeat');
+    });
+
+    // --- Verificar vitória ---
+    if (invaders.every(inv => !inv.alive)) {
+      level++;
+      invaderDelay = Math.max(80, 700 - (level - 1) * 100);
+      statusEl.textContent = `► NÍVEL ${level}! ◄`;
+      statusEl.classList.add('blink');
+      setTimeout(() => {
+        statusEl.textContent = '';
+        statusEl.classList.remove('blink');
+        createInvaders();
+        createBunkers();
+      }, 1200);
+    }
+  }
+
+  // ---- Mover invasores (padrão de descida) ----
+  function moveInvaders() {
+    const alive = invaders.filter(i => i.alive);
+    if (alive.length === 0) return;
+
+    const leftmost  = Math.min(...alive.map(i => i.x));
+    const rightmost = Math.max(...alive.map(i => i.x + i.w));
+
+    let reverseX = false;
+    if (rightmost + invaderDX > W - 10) { reverseX = true; invaderDX = -Math.abs(invaderDX); }
+    if (leftmost  + invaderDX < 10)     { reverseX = true; invaderDX =  Math.abs(invaderDX); }
+
+    invaders.forEach(inv => {
+      if (!inv.alive) return;
+      inv.x += invaderDX * 6;
+      if (reverseX) inv.y += 14; // desce ao inverter
+      inv.frame = 1 - inv.frame; // alternar frame de animação
+    });
+  }
+
+  // ---- Colisão AABB ----
+  function rectOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x &&
+           a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  // ---- Desenhar ----
+  function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Estrelas de fundo (estáticas)
+    if (!draw._stars) {
+      draw._stars = Array.from({ length: 80 }, () => ({
+        x: Math.random() * W,
+        y: Math.random() * H * 0.85,
+        r: Math.random() < 0.15 ? 1.5 : 0.8,
+      }));
+    }
+    draw._stars.forEach(s => {
+      const twinkle = Math.random() > 0.98 ? 0.3 : 1;
+      ctx.globalAlpha = twinkle;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    });
+    ctx.globalAlpha = 1;
+
+    // Linha do chão
+    ctx.strokeStyle = '#00ff41';
+    ctx.lineWidth   = 1.5;
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur  = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, H - 30);
+    ctx.lineTo(W, H - 30);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Jogador
+    drawPlayer();
+
+    // Invasores
+    invaders.forEach(inv => {
+      if (inv.alive) drawInvader(inv);
+    });
+
+    // Nave misteriosa
+    if (mysteryShip) drawMystery();
+
+    // Bunkers
+    bunkers.forEach(bunker => drawBunker(bunker));
+
+    // Balas do jogador
+    bullets.forEach(b => {
+      ctx.shadowColor = '#00ff41';
+      ctx.shadowBlur  = 8;
+      ctx.fillStyle   = '#00ff41';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    });
+
+    // Balas inimigas
+    enemyBullets.forEach(b => {
+      ctx.shadowColor = '#ff4444';
+      ctx.shadowBlur  = 6;
+      ctx.fillStyle   = '#ff4444';
+      // Zig-zag visual
+      const zigzag = Math.sin(b.y / 4) * 2;
+      ctx.fillRect(b.x + zigzag, b.y, b.w, b.h);
+    });
+
+    ctx.shadowBlur = 0;
+  }
+
+  // ---- Desenhar jogador (nave CSS/pixel) ----
+  function drawPlayer() {
+    const x = player.x, y = player.y;
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur  = 12;
+    ctx.fillStyle   = '#00ff41';
+
+    // Corpo da nave
+    ctx.fillRect(x + 14, y, 12, 8);       // topo / canhão
+    ctx.fillRect(x + 6,  y + 8, 28, 8);   // meio
+    ctx.fillRect(x,      y + 14, 40, 6);  // base
+
+    // Destaque
+    ctx.shadowBlur = 0;
+    ctx.fillStyle  = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(x + 14, y, 5, 4);
+  }
+
+  // ---- Desenhar invasor (estilo pixel art) ----
+  function drawInvader(inv) {
+    const { x, y, w, h, type, frame: f } = inv;
+    const color = INV_TYPES[type].color;
+
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = 8;
+    ctx.fillStyle   = color;
+
+    if (type === 0) {
+      // Tipo A — alien com antenas (frame 0 e 1)
+      if (f === 0) {
+        ctx.fillRect(x+10, y+2,  16, 4);
+        ctx.fillRect(x+6,  y+6,  24, 4);
+        ctx.fillRect(x+2,  y+10, 32, 8);
+        ctx.fillRect(x+2,  y+18, 8, 6);
+        ctx.fillRect(x+26, y+18, 8, 6);
+        ctx.fillRect(x+4,  y+2,  4, 6);
+        ctx.fillRect(x+28, y+2,  4, 6);
+      } else {
+        ctx.fillRect(x+10, y+2,  16, 4);
+        ctx.fillRect(x+6,  y+6,  24, 4);
+        ctx.fillRect(x+2,  y+10, 32, 8);
+        ctx.fillRect(x+6,  y+18, 8, 6);
+        ctx.fillRect(x+22, y+18, 8, 6);
+        ctx.fillRect(x+6,  y+2,  4, 6);
+        ctx.fillRect(x+26, y+2,  4, 6);
+      }
+    } else if (type <= 2) {
+      // Tipo B — bicho com garras
+      if (f === 0) {
+        ctx.fillRect(x+12, y+2,  12, 4);
+        ctx.fillRect(x+6,  y+6,  24, 6);
+        ctx.fillRect(x+2,  y+12, 32, 6);
+        ctx.fillRect(x+2,  y+18, 12, 5);
+        ctx.fillRect(x+22, y+18, 12, 5);
+        ctx.fillRect(x+6,  y+6,  6, 3);
+        ctx.fillRect(x+24, y+6,  6, 3);
+      } else {
+        ctx.fillRect(x+12, y+2,  12, 4);
+        ctx.fillRect(x+6,  y+6,  24, 6);
+        ctx.fillRect(x+2,  y+12, 32, 6);
+        ctx.fillRect(x+4,  y+18, 10, 5);
+        ctx.fillRect(x+22, y+18, 10, 5);
+        ctx.fillRect(x+4,  y+6,  6, 3);
+        ctx.fillRect(x+26, y+6,  6, 3);
+      }
+    } else {
+      // Tipo C — caranguejo
+      if (f === 0) {
+        ctx.fillRect(x+4,  y+2,  28, 4);
+        ctx.fillRect(x+2,  y+6,  32, 6);
+        ctx.fillRect(x+8,  y+12, 20, 6);
+        ctx.fillRect(x+2,  y+18, 8, 6);
+        ctx.fillRect(x+26, y+18, 8, 6);
+        ctx.fillRect(x+2,  y+2,  6, 4);
+        ctx.fillRect(x+28, y+2,  6, 4);
+      } else {
+        ctx.fillRect(x+4,  y+2,  28, 4);
+        ctx.fillRect(x+2,  y+6,  32, 6);
+        ctx.fillRect(x+8,  y+12, 20, 6);
+        ctx.fillRect(x+4,  y+18, 8, 6);
+        ctx.fillRect(x+24, y+18, 8, 6);
+        ctx.fillRect(x+4,  y+2,  4, 4);
+        ctx.fillRect(x+28, y+2,  4, 4);
+      }
+    }
+
+    // Olhos
+    ctx.shadowBlur = 0;
+    ctx.fillStyle  = '#000';
+    ctx.fillRect(x + 10, y + 8, 4, 4);
+    ctx.fillRect(x + 22, y + 8, 4, 4);
+  }
+
+  // ---- Desenhar nave misteriosa (UFO) ----
+  function drawMystery() {
+    const ms = mysteryShip;
+    ctx.shadowColor = '#ff00ff';
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = '#ff00ff';
+    ctx.fillRect(ms.x + 10, ms.y,      30, 6);
+    ctx.fillRect(ms.x + 4,  ms.y + 6,  42, 8);
+    ctx.fillRect(ms.x,      ms.y + 10, 50, 10);
+
+    // Janelas
+    ctx.fillStyle   = '#ffff00';
+    ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur  = 6;
+    [8, 20, 32].forEach(ox => {
+      ctx.fillRect(ms.x + ox, ms.y + 12, 6, 6);
+    });
+    ctx.shadowBlur = 0;
+  }
+
+  // ---- Desenhar bunkers ----
+  function drawBunker(bunker) {
+    bunker.forEach(block => {
+      if (block.hp <= 0) return;
+      const alpha = block.hp / 4;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle   = '#00cc33';
+      ctx.shadowColor = '#00ff41';
+      ctx.shadowBlur  = 3;
+      ctx.fillRect(block.x, block.y, block.w, block.h);
+    });
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur  = 0;
+  }
+
+  // ---- Atualizar HUD ----
+  function updateHUD() {
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
+    livesEl.textContent = '♥'.repeat(Math.max(0, lives));
+    if (score > bestScore) {
+      bestScore = score;
+      bestEl.textContent = bestScore;
+      localStorage.setItem('si_best', bestScore);
+    }
+  }
+
+  // ---- Game Over ----
+  function endGame(result) {
+    gameState = 'gameover';
+    cancelAnimationFrame(animId);
+
+    ctx.fillStyle = result === 'defeat' ? 'rgba(255,0,0,0.2)' : 'rgba(0,255,65,0.1)';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.textAlign  = 'center';
+    const msg      = result === 'defeat' ? 'GAME OVER' : 'VOCÊ VENCEU!';
+    ctx.fillStyle  = result === 'defeat' ? '#ff0000' : '#00ff41';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur  = 20;
+    ctx.font = 'bold 38px Courier New';
+    ctx.fillText(msg, W/2, H/2 - 20);
+    ctx.shadowBlur = 0;
+    ctx.font = '16px Courier New';
+    ctx.fillStyle = '#ffff00';
+    ctx.fillText(`PONTOS: ${score}`, W/2, H/2 + 20);
+
+    statusEl.textContent = result === 'defeat' ? `✗ GAME OVER! ${score} pts` : `★ VITÓRIA! ${score} pts`;
+    statusEl.style.color = result === 'defeat' ? '#ff4444' : '#00ff41';
+    statusEl.classList.add('blink');
+    startBtn.textContent = '[ JOGAR NOVAMENTE ]';
+  }
+
+  // ---- Loop principal ----
+  let lastTime = 0;
+  function gameLoop(now) {
+    if (gameState !== 'playing') return;
+    const dt = now - lastTime;
+    lastTime = now;
+
+    update(now);
+    draw();
+    animId = requestAnimationFrame(gameLoop);
+  }
+
+  // ---- Tela inicial ----
+  function drawIdle() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Estrelas
+    for (let i = 0; i < 80; i++) {
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(Math.random()*W, Math.random()*H*0.9, 1, 1);
+    }
+
+    ctx.textAlign   = 'center';
+    ctx.fillStyle   = '#ff4444';
+    ctx.shadowColor = '#ff4444';
+    ctx.shadowBlur  = 20;
+    ctx.font = 'bold 28px Courier New';
+    ctx.fillText('SPACE INVADERS', W/2, H/2 - 20);
+    ctx.shadowBlur = 0;
+    ctx.font = '14px Courier New';
+    ctx.fillStyle = '#555';
+    ctx.fillText('Taito Corporation — 1978', W/2, H/2 + 18);
+  }
+
+  // ---- Botão ----
+  startBtn.addEventListener('click', () => {
+    cancelAnimationFrame(animId);
+    init();
+    gameState = 'playing';
+    statusEl.textContent = '';
+    statusEl.style.color = '#ffff00';
+    statusEl.classList.remove('blink');
+    startBtn.textContent = '[ REINICIAR ]';
+    lastTime = performance.now();
+    animId = requestAnimationFrame(gameLoop);
+  });
+
+  drawIdle();
+  bestEl.textContent = bestScore;
+</script>
+</body>
+</html>

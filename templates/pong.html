@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PONG — Retro Games Archive</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #000;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px, transparent 2px,
+        rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ===== HEADER ===== */
+    .page-header {
+      width: 100%;
+      background: #000080;
+      border-bottom: 3px solid #00ffff;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .page-header h1 {
+      font-size: 22px;
+      color: #00ffff;
+      letter-spacing: 4px;
+      text-shadow: 0 0 8px #00ffff;
+    }
+
+    .back-btn {
+      background: #000;
+      color: #ffff00;
+      border: 2px outset #888;
+      padding: 5px 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      background: #003300;
+      color: #00ff41;
+      border-style: inset;
+    }
+
+    /* ===== GAME AREA ===== */
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      gap: 14px;
+      flex: 1;
+    }
+
+    /* ===== SCOREBOARD ===== */
+    .scoreboard {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      background: #050505;
+      border: 2px solid #00ff41;
+      padding: 10px 40px;
+      width: 640px;
+    }
+
+    .score-player {
+      text-align: center;
+    }
+
+    .score-label {
+      font-size: 11px;
+      color: #555;
+      letter-spacing: 3px;
+    }
+
+    .score-value {
+      font-size: 48px;
+      color: #00ff41;
+      text-shadow: 0 0 12px #00ff41;
+      line-height: 1;
+    }
+
+    .score-divider {
+      font-size: 36px;
+      color: #333;
+    }
+
+    /* ===== CANVAS ===== */
+    canvas#pongCanvas {
+      border: 3px solid #00ff41;
+      background: #000;
+      box-shadow: 0 0 20px rgba(0,255,65,0.3);
+      display: block;
+    }
+
+    /* ===== STATUS / MESSAGE ===== */
+    .game-status {
+      font-size: 16px;
+      color: #ffff00;
+      letter-spacing: 3px;
+      height: 22px;
+    }
+
+    .game-status.blink {
+      animation: blink-anim 0.8s step-end infinite;
+    }
+
+    @keyframes blink-anim {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ===== CONTROLS INFO ===== */
+    .controls-info {
+      display: flex;
+      gap: 40px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .controls-info span { color: #00ffff; }
+
+    /* ===== START BUTTON ===== */
+    .start-btn {
+      background: #003300;
+      color: #00ff41;
+      border: 2px solid #00ff41;
+      padding: 10px 30px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      cursor: pointer;
+      letter-spacing: 3px;
+      transition: background 0.1s;
+    }
+
+    .start-btn:hover { background: #005500; }
+    .start-btn:active { background: #001100; border-style: inset; }
+
+    /* ===== AI LEVEL SELECTOR ===== */
+    .options-row {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .options-row label { color: #00ffff; }
+
+    .retro-select {
+      background: #000;
+      color: #00ff41;
+      border: 2px solid #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      padding: 3px 8px;
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      border-top: 1px solid #111;
+      font-size: 11px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <h1>PONG</h1>
+  <a href="/" class="back-btn">◄ VOLTAR PARA HOME</a>
+</div>
+
+<!-- GAME CONTAINER -->
+<div class="game-container">
+
+  <!-- SCOREBOARD -->
+  <div class="scoreboard">
+    <div class="score-player">
+      <div class="score-label">JOGADOR</div>
+      <div class="score-value" id="scorePlayer">0</div>
+    </div>
+    <div class="score-divider">:</div>
+    <div class="score-player">
+      <div class="score-label">COMPUTADOR</div>
+      <div class="score-value" id="scoreAI">0</div>
+    </div>
+  </div>
+
+  <!-- STATUS MESSAGE -->
+  <div class="game-status blink" id="gameStatus">PRESSIONE INICIAR PARA JOGAR</div>
+
+  <!-- CANVAS -->
+  <canvas id="pongCanvas" width="640" height="400"></canvas>
+
+  <!-- OPTIONS ROW -->
+  <div class="options-row">
+    <label>DIFICULDADE DA IA:</label>
+    <select class="retro-select" id="aiLevel">
+      <option value="easy">FÁCIL</option>
+      <option value="medium" selected>MÉDIO</option>
+      <option value="hard">DIFÍCIL</option>
+    </select>
+  </div>
+
+  <!-- CONTROLS INFO -->
+  <div class="controls-info">
+    <div><span>W</span> → SUBIR PADDLE</div>
+    <div><span>S</span> → DESCER PADDLE</div>
+    <div>Primeiro a <span>7</span> pontos vence!</div>
+  </div>
+
+  <!-- START BUTTON -->
+  <button class="start-btn" id="startBtn">[ INICIAR PARTIDA ]</button>
+
+</div>
+
+<footer>© 1998 Retro Games Archive — PONG v1.0</footer>
+
+<script>
+  // ===================================================
+  //  PONG — JavaScript puro com Canvas
+  // ===================================================
+
+  const canvas  = document.getElementById('pongCanvas');
+  const ctx     = canvas.getContext('2d');
+  const W       = canvas.width;
+  const H       = canvas.height;
+
+  // ---- DOM refs ----
+  const scorePlayerEl = document.getElementById('scorePlayer');
+  const scoreAIEl     = document.getElementById('scoreAI');
+  const statusEl      = document.getElementById('gameStatus');
+  const startBtn      = document.getElementById('startBtn');
+  const aiLevelSel    = document.getElementById('aiLevel');
+
+  // ---- Constantes ----
+  const PADDLE_W  = 12;
+  const PADDLE_H  = 80;
+  const BALL_SIZE = 10;
+  const BALL_SPEED_INIT = 5;
+  const WIN_SCORE = 7;
+
+  // ---- Estado do jogo ----
+  let state = 'idle'; // 'idle' | 'playing' | 'paused' | 'gameover'
+  let animId = null;
+
+  // Paddles
+  let playerY, aiY;
+
+  // Bola
+  let ballX, ballY, ballVX, ballVY;
+
+  // Placar
+  let scorePlayer = 0;
+  let scoreAI     = 0;
+
+  // Teclas
+  const keys = {};
+  document.addEventListener('keydown', e => { keys[e.key] = true; });
+  document.addEventListener('keyup',   e => { keys[e.key] = false; });
+
+  // ---- Inicializa posições ----
+  function resetBall(direction = 1) {
+    ballX = W / 2;
+    ballY = H / 2;
+    const angle = (Math.random() * 60 - 30) * (Math.PI / 180);
+    ballVX = BALL_SPEED_INIT * direction;
+    ballVY = BALL_SPEED_INIT * Math.sin(angle);
+  }
+
+  function resetGame() {
+    playerY = H / 2 - PADDLE_H / 2;
+    aiY     = H / 2 - PADDLE_H / 2;
+    scorePlayer = 0;
+    scoreAI     = 0;
+    updateScore();
+    resetBall(1);
+  }
+
+  function updateScore() {
+    scorePlayerEl.textContent = scorePlayer;
+    scoreAIEl.textContent     = scoreAI;
+  }
+
+  // ---- Velocidade da IA conforme dificuldade ----
+  function getAISpeed() {
+    const level = aiLevelSel.value;
+    if (level === 'easy')   return 2.5;
+    if (level === 'hard')   return 5.5;
+    return 3.8; // medium
+  }
+
+  // ---- Lógica de atualização ----
+  function update() {
+    // Mover jogador
+    const PLAYER_SPEED = 6;
+    if ((keys['w'] || keys['W']) && playerY > 0)
+      playerY -= PLAYER_SPEED;
+    if ((keys['s'] || keys['S']) && playerY < H - PADDLE_H)
+      playerY += PLAYER_SPEED;
+
+    // IA: tracking simples com velocidade limitada
+    const aiSpeed = getAISpeed();
+    const aiCenter = aiY + PADDLE_H / 2;
+    if (aiCenter < ballY - 5) aiY = Math.min(aiY + aiSpeed, H - PADDLE_H);
+    if (aiCenter > ballY + 5) aiY = Math.max(aiY - aiSpeed, 0);
+
+    // Mover bola
+    ballX += ballVX;
+    ballY += ballVY;
+
+    // Rebater nas paredes (topo / baixo)
+    if (ballY <= 0) {
+      ballY = 0;
+      ballVY = Math.abs(ballVY);
+    }
+    if (ballY + BALL_SIZE >= H) {
+      ballY = H - BALL_SIZE;
+      ballVY = -Math.abs(ballVY);
+    }
+
+    // Colisão com paddle do jogador (lado esquerdo)
+    const px = 20;
+    if (
+      ballX <= px + PADDLE_W &&
+      ballX >= px &&
+      ballY + BALL_SIZE >= playerY &&
+      ballY <= playerY + PADDLE_H
+    ) {
+      ballX = px + PADDLE_W;
+      // Ângulo baseado em onde acertou o paddle
+      const hitPos = (ballY + BALL_SIZE / 2 - playerY) / PADDLE_H; // 0 a 1
+      const angle  = (hitPos - 0.5) * 120 * (Math.PI / 180);
+      const speed  = Math.hypot(ballVX, ballVY) + 0.2;
+      ballVX =  Math.abs(Math.cos(angle) * speed);
+      ballVY =  Math.sin(angle) * speed;
+    }
+
+    // Colisão com paddle da IA (lado direito)
+    const ax = W - 20 - PADDLE_W;
+    if (
+      ballX + BALL_SIZE >= ax &&
+      ballX + BALL_SIZE <= ax + PADDLE_W + 4 &&
+      ballY + BALL_SIZE >= aiY &&
+      ballY <= aiY + PADDLE_H
+    ) {
+      ballX = ax - BALL_SIZE;
+      const hitPos = (ballY + BALL_SIZE / 2 - aiY) / PADDLE_H;
+      const angle  = (hitPos - 0.5) * 120 * (Math.PI / 180);
+      const speed  = Math.hypot(ballVX, ballVY) + 0.2;
+      ballVX = -Math.abs(Math.cos(angle) * speed);
+      ballVY =  Math.sin(angle) * speed;
+    }
+
+    // Limitar velocidade máxima
+    const MAX_SPEED = 14;
+    const spd = Math.hypot(ballVX, ballVY);
+    if (spd > MAX_SPEED) {
+      ballVX = ballVX / spd * MAX_SPEED;
+      ballVY = ballVY / spd * MAX_SPEED;
+    }
+
+    // Ponto para o jogador (bola saiu pela direita)
+    if (ballX > W) {
+      scorePlayer++;
+      updateScore();
+      if (scorePlayer >= WIN_SCORE) return endGame('player');
+      statusEl.textContent = '◄ PONTO DO JOGADOR!';
+      statusEl.classList.add('blink');
+      setTimeout(() => {
+        statusEl.textContent = '';
+        statusEl.classList.remove('blink');
+        resetBall(-1);
+      }, 900);
+    }
+
+    // Ponto para a IA (bola saiu pela esquerda)
+    if (ballX + BALL_SIZE < 0) {
+      scoreAI++;
+      updateScore();
+      if (scoreAI >= WIN_SCORE) return endGame('ai');
+      statusEl.textContent = 'PONTO DO COMPUTADOR! ►';
+      statusEl.classList.add('blink');
+      setTimeout(() => {
+        statusEl.textContent = '';
+        statusEl.classList.remove('blink');
+        resetBall(1);
+      }, 900);
+    }
+  }
+
+  // ---- Renderização ----
+  function draw() {
+    // Fundo
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Linha central pontilhada
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Glow verde no paddle do jogador
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur  = 12;
+
+    // Paddle jogador
+    ctx.fillStyle = '#00ff41';
+    ctx.fillRect(20, playerY, PADDLE_W, PADDLE_H);
+
+    // Paddle IA
+    ctx.fillStyle = '#ff4444';
+    ctx.shadowColor = '#ff4444';
+    ctx.fillRect(W - 20 - PADDLE_W, aiY, PADDLE_W, PADDLE_H);
+
+    // Bola
+    ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = '#ffff00';
+    ctx.fillRect(ballX, ballY, BALL_SIZE, BALL_SIZE);
+
+    ctx.shadowBlur = 0;
+
+    // Telas de idle/gameover desenhadas via updateStatus
+  }
+
+  // ---- Loop principal ----
+  function gameLoop() {
+    if (state === 'playing') {
+      update();
+      draw();
+    } else if (state === 'idle' || state === 'gameover') {
+      drawIdleScreen();
+    }
+    animId = requestAnimationFrame(gameLoop);
+  }
+
+  function drawIdleScreen() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grade fundo
+    ctx.strokeStyle = '#0a0a0a';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#00ff41';
+    ctx.font      = 'bold 48px Courier New';
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur  = 20;
+    ctx.fillText('PONG', W / 2, H / 2 - 20);
+    ctx.shadowBlur = 0;
+
+    ctx.font      = '14px Courier New';
+    ctx.fillStyle = '#555';
+    ctx.fillText('Jogo Clássico — Atari 1972', W / 2, H / 2 + 20);
+  }
+
+  function endGame(winner) {
+    state = 'gameover';
+    if (winner === 'player') {
+      statusEl.textContent = '★ VOCÊ VENCEU! PARABÉNS! ★';
+      statusEl.style.color = '#00ff41';
+    } else {
+      statusEl.textContent = '✗ COMPUTADOR VENCEU! TENTE NOVAMENTE!';
+      statusEl.style.color = '#ff4444';
+    }
+    statusEl.classList.add('blink');
+    startBtn.textContent = '[ JOGAR NOVAMENTE ]';
+  }
+
+  // ---- Botão Iniciar ----
+  startBtn.addEventListener('click', () => {
+    resetGame();
+    state = 'playing';
+    statusEl.textContent = '';
+    statusEl.style.color = '#ffff00';
+    statusEl.classList.remove('blink');
+    startBtn.textContent = '[ REINICIAR ]';
+  });
+
+  // ---- Iniciar loop ----
+  drawIdleScreen();
+  gameLoop();
+</script>
+</body>
+</html>

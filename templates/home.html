@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro Games Archive</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #000;
+      color: #00ff41;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      background-image:
+        linear-gradient(rgba(0,255,65,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* ===== SCANLINE OVERLAY ===== */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ===== WRAPPER ===== */
+    .wrapper {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    /* ===== TOP BANNER ===== */
+    .top-banner {
+      background: #000080;
+      border: 3px solid #00ffff;
+      text-align: center;
+      padding: 6px;
+      margin-bottom: 10px;
+      animation: banner-flash 2s infinite;
+    }
+
+    @keyframes banner-flash {
+      0%, 49% { border-color: #00ffff; }
+      50%, 100% { border-color: #ff00ff; }
+    }
+
+    .top-banner span {
+      color: #ffff00;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      border: 3px solid #00ff41;
+      background: #0a0a0a;
+      padding: 20px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ===== PIXEL ART LOGO ===== */
+    .pixel-logo {
+      display: grid;
+      grid-template-columns: repeat(10, 10px);
+      grid-template-rows: repeat(10, 10px);
+      gap: 1px;
+      flex-shrink: 0;
+    }
+
+    .pixel-logo .p { background: #00ff41; }
+    .pixel-logo .b { background: #000080; }
+    .pixel-logo .y { background: #ffff00; }
+    .pixel-logo .r { background: #ff0000; }
+    .pixel-logo .c { background: #00ffff; }
+    .pixel-logo .o { background: #ff8800; }
+    .pixel-logo .e { background: transparent; }
+
+    .header-text h1 {
+      font-size: 28px;
+      color: #00ff41;
+      text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+      letter-spacing: 3px;
+      line-height: 1;
+    }
+
+    .header-text .subtitle {
+      color: #00ffff;
+      font-size: 12px;
+      letter-spacing: 4px;
+      margin-top: 6px;
+    }
+
+    .header-text .version {
+      color: #888;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    /* ===== NAV BAR ===== */
+    .navbar {
+      background: #000080;
+      border: 2px solid #00ffff;
+      padding: 6px 10px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .navbar span {
+      color: #00ffff;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+
+    .nav-btn {
+      background: #000;
+      color: #ffff00;
+      border: 2px outset #888;
+      padding: 3px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .nav-btn:hover {
+      background: #003300;
+      color: #00ff41;
+      border-style: inset;
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 10px;
+    }
+
+    /* ===== SECTION PANELS ===== */
+    .panel {
+      border: 2px solid #00ff41;
+      background: #050505;
+      margin-bottom: 10px;
+    }
+
+    .panel-title {
+      background: #00ff41;
+      color: #000;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 3px 8px;
+      letter-spacing: 2px;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    /* ===== WELCOME TEXT ===== */
+    .welcome-text {
+      color: #ccc;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .welcome-text strong { color: #00ff41; }
+    .welcome-text .highlight { color: #ffff00; }
+
+    /* ===== BLINK EFFECT ===== */
+    .blink {
+      animation: blink-anim 1s step-end infinite;
+    }
+
+    @keyframes blink-anim {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ===== GAME CARDS ===== */
+    .games-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .game-card {
+      border: 2px solid #333;
+      background: #0a0a1a;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.1s, background 0.1s;
+      text-decoration: none;
+      display: block;
+    }
+
+    .game-card:hover {
+      border-color: #00ffff;
+      background: #001020;
+    }
+
+    .game-card:hover .game-title { color: #00ffff; }
+    .game-card:active { border-style: inset; background: #000; }
+
+    .game-icon {
+      font-size: 36px;
+      display: block;
+      margin-bottom: 8px;
+      filter: saturate(0) brightness(0.8);
+      transition: filter 0.2s;
+    }
+
+    .game-card:hover .game-icon { filter: none; }
+
+    .game-title {
+      color: #00ff41;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+
+    .game-year {
+      color: #555;
+      font-size: 11px;
+    }
+
+    .game-desc {
+      color: #777;
+      font-size: 11px;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* ===== PIXEL ART PREVIEW (CSS-only joystick) ===== */
+    .joystick-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 14px 0 8px;
+    }
+
+    .joystick {
+      display: grid;
+      grid-template-columns: repeat(5, 8px);
+      grid-template-rows: repeat(5, 8px);
+      gap: 1px;
+    }
+
+    .joystick .j { background: #555; }
+    .joystick .jh { background: #888; }
+    .joystick .e { background: transparent; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar .panel { margin-bottom: 10px; }
+
+    .counter-display {
+      font-size: 24px;
+      color: #ff0000;
+      text-align: center;
+      letter-spacing: 4px;
+      background: #000;
+      border: 2px inset #444;
+      padding: 8px;
+      margin: 8px 0;
+      font-weight: bold;
+    }
+
+    .counter-label {
+      text-align: center;
+      color: #888;
+      font-size: 11px;
+    }
+
+    /* ===== NEWS / UPDATES ===== */
+    .news-item {
+      border-bottom: 1px dashed #333;
+      padding: 6px 0;
+      font-size: 12px;
+    }
+
+    .news-item:last-child { border-bottom: none; }
+
+    .news-date {
+      color: #555;
+      font-size: 10px;
+    }
+
+    .news-text { color: #aaa; }
+    .news-text strong { color: #ffff00; }
+
+    /* ===== MARQUEE STYLE ===== */
+    .marquee-box {
+      border: 2px solid #ff00ff;
+      background: #000;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 4px 0;
+      margin-bottom: 10px;
+    }
+
+    .marquee-inner {
+      display: inline-block;
+      animation: marquee-scroll 18s linear infinite;
+      color: #ff00ff;
+      font-size: 12px;
+      letter-spacing: 2px;
+    }
+
+    @keyframes marquee-scroll {
+      0% { transform: translateX(100vw); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* ===== WEBRING / LINKS ===== */
+    .webring {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .webring a {
+      color: #00ffff;
+      font-size: 14px;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .webring a:hover { color: #ff00ff; }
+
+    /* ===== TABLE STYLE ===== */
+    table.retro {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    table.retro th {
+      background: #003300;
+      color: #00ff41;
+      padding: 4px 8px;
+      border: 1px solid #00ff41;
+      text-align: left;
+    }
+
+    table.retro td {
+      border: 1px solid #333;
+      padding: 4px 8px;
+      color: #aaa;
+    }
+
+    table.retro tr:hover td { background: #0a1a0a; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      border: 2px solid #333;
+      background: #050505;
+      padding: 12px;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .footer-copy {
+      color: #555;
+      font-size: 12px;
+    }
+
+    .footer-badges {
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      border: 1px solid #333;
+      padding: 2px 8px;
+      font-size: 10px;
+      color: #555;
+    }
+
+    .badge.green { border-color: #00ff41; color: #00ff41; }
+    .badge.blue  { border-color: #0000ff; color: #4444ff; }
+    .badge.red   { border-color: #ff0000; color: #ff4444; }
+    .badge.yel   { border-color: #ffff00; color: #ffff00; }
+
+    /* ===== PIXEL ART SPRITES (CSS) ===== */
+    .sprite-bar {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin: 10px 0;
+    }
+
+    .sprite-spaceship {
+      display: grid;
+      grid-template-columns: repeat(7, 6px);
+      grid-template-rows: repeat(6, 6px);
+      gap: 1px;
+    }
+
+    .sprite-spaceship .s { background: #00ff41; }
+    .sprite-spaceship .e { background: transparent; }
+    .sprite-spaceship .y { background: #ffff00; }
+
+    .sprite-invader {
+      display: grid;
+      grid-template-columns: repeat(8, 5px);
+      grid-template-rows: repeat(6, 5px);
+      gap: 1px;
+    }
+
+    .sprite-invader .i { background: #ff4444; }
+    .sprite-invader .e { background: transparent; }
+
+    /* ===== SCROLLBAR STYLE ===== */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #00ff41; }
+    ::-webkit-scrollbar-thumb:hover { background: #00ffff; }
+  </style>
+</head>
+<body>
+
+<!-- TOP MARQUEE BANNER -->
+<div class="marquee-box">
+  <span class="marquee-inner">
+    ★ BEM-VINDO AO RETRO GAMES ARCHIVE ★ &nbsp;&nbsp;&nbsp; OS MELHORES CLÁSSICOS DOS ANOS 80 &amp; 90 &nbsp;&nbsp;&nbsp;
+    PONG • SNAKE • TETRIS • SPACE INVADERS &nbsp;&nbsp;&nbsp; JOGOS 100% GRÁTIS NO SEU BROWSER! &nbsp;&nbsp;&nbsp;
+    ★ USE TECLADO PARA JOGAR ★ &nbsp;&nbsp;&nbsp;
+  </span>
+</div>
+
+<div class="wrapper">
+
+  <!-- TOP BANNER -->
+  <div class="top-banner">
+    <span>★★★ NOVO: SPACE INVADERS AGORA DISPONÍVEL! CLIQUE PARA JOGAR ★★★</span>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <!-- Pixel Art Logo: joystick / game controller -->
+    <div class="pixel-logo" id="pixelLogo"></div>
+
+    <div class="header-text">
+      <h1>RETRO GAMES ARCHIVE</h1>
+      <div class="subtitle">:: OS CLÁSSICOS NUNCA MORREM ::</div>
+      <div class="version">Versão 2.4 | Atualizado em: 14/Nov/1998</div>
+    </div>
+  </header>
+
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <span>[MENU]</span>
+    <a href="home.html" class="nav-btn">[ HOME ]</a>
+    <a href="pong.html" class="nav-btn">[ PONG ]</a>
+    <a href="snake.html" class="nav-btn">[ SNAKE ]</a>
+    <a href="tetris.html" class="nav-btn">[ TETRIS ]</a>
+    <a href="space_invaders.html" class="nav-btn">[ SPACE INVADERS ]</a>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="main-layout">
+
+    <!-- LEFT COLUMN -->
+    <div class="content">
+
+      <!-- WELCOME PANEL -->
+      <div class="panel">
+        <div class="panel-title">» SOBRE O SITE</div>
+        <div class="panel-body">
+          <p class="welcome-text">
+            Bem-vindo ao <strong>Retro Games Archive</strong>, o melhor portal de jogos clássicos da internet!<br><br>
+            Aqui você encontra as obras-primas dos videogames retrô, <span class="highlight">totalmente grátis</span>,
+            rodando diretamente no seu navegador — sem precisar instalar nada!<br><br>
+            Reviva os tempos áureos dos arcades e dos primeiros computadores com os jogos que
+            <strong>definiram uma geração</strong>. Cada título foi fielmente recriado para
+            rodar no seu browser moderno, mantendo toda a nostalgia do original.<br><br>
+            <span class="blink">▶ ESCOLHA UM JOGO ABAIXO E COMECE A JOGAR AGORA!</span>
+          </p>
+
+          <!-- Pixel sprite bar -->
+          <div class="sprite-bar">
+            <div class="sprite-spaceship" id="ship"></div>
+            <div class="sprite-invader" id="invader"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME SELECTION -->
+      <div class="panel">
+        <div class="panel-title">» JOGOS DISPONÍVEIS — CLIQUE PARA JOGAR</div>
+        <div class="panel-body">
+          <div class="games-grid">
+
+            <a href="pong.html" class="game-card">
+              <span class="game-icon"></span>
+              <div class="game-title">PONG</div>
+              <div class="game-year">Atari — 1972</div>
+              <div class="game-desc">O clássico tênis de mesa! Enfrente a IA numa batalha de reflexos. Use W/S para mover.</div>
+            </a>
+
+            <a href="snake.html" class="game-card">
+              <span class="game-icon"></span>
+              <div class="game-title">SNAKE</div>
+              <div class="game-year">Nokia — 1997</div>
+              <div class="game-desc">Guie a cobra e colete comida sem colidir! Use as setas do teclado para jogar.</div>
+            </a>
+
+            <a href="tetris.html" class="game-card">
+              <span class="game-icon"></span>
+              <div class="game-title">TETRIS</div>
+              <div class="game-year">Alexey Pajitnov — 1984</div>
+              <div class="game-desc">Encaixe as peças e complete linhas! Setas para mover, Espaço para queda rápida.</div>
+            </a>
+
+            <a href="space_invaders.html" class="game-card">
+              <span class="game-icon"></span>
+              <div class="game-title">SPACE INVADERS</div>
+              <div class="game-year">Taito — 1978</div>
+              <div class="game-desc">Elimine os invasores alienígenas! A/D para mover, Espaço para atirar.</div>
+            </a>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- HIGH SCORES TABLE -->
+      <div class="panel">
+        <div class="panel-title">» HALL DA FAMA — TOP PONTUAÇÕES</div>
+        <div class="panel-body">
+          <table class="retro">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>JOGADOR</th>
+                <th>JOGO</th>
+                <th>PONTOS</th>
+                <th>DATA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>ACE</td><td>Space Invaders</td><td>99,850</td><td>12/Nov/1998</td></tr>
+              <tr><td>2</td><td>ZAP</td><td>Tetris</td><td>87,320</td><td>08/Nov/1998</td></tr>
+              <tr><td>3</td><td>MAX</td><td>Snake</td><td>5,420</td><td>10/Nov/1998</td></tr>
+              <tr><td>4</td><td>KID</td><td>Pong</td><td>11-7</td><td>14/Nov/1998</td></tr>
+              <tr><td>5</td><td>ZEX</td><td>Space Invaders</td><td>63,440</td><td>01/Nov/1998</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+      <!-- VISITOR COUNTER -->
+      <div class="panel">
+        <div class="panel-title">» VISITANTES</div>
+        <div class="panel-body">
+          <div class="counter-display" id="visitorCounter">000000</div>
+          <div class="counter-label">visitantes desde 01/Jan/1998</div>
+          <div class="counter-label" style="margin-top:6px; color:#ffff00;">
+            <span class="blink">● </span>online agora: <strong id="onlineCount">3</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEWS -->
+      <div class="panel">
+        <div class="panel-title">» NOVIDADES</div>
+        <div class="panel-body">
+          <div class="news-item">
+            <div class="news-date">14/Nov/1998</div>
+            <div class="news-text"><strong>Space Invaders</strong> adicionado ao site!</div>
+          </div>
+          <div class="news-item">
+            <div class="news-date">05/Nov/1998</div>
+            <div class="news-text"><strong>Tetris</strong> agora com preview da próxima peça.</div>
+          </div>
+          <div class="news-item">
+            <div class="news-date">28/Out/1998</div>
+            <div class="news-text">Site relançado com novo visual!</div>
+          </div>
+          <div class="news-item">
+            <div class="news-date">15/Out/1998</div>
+            <div class="news-text"><strong>Pong</strong> e <strong>Snake</strong> disponíveis.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS CHEAT SHEET -->
+      <div class="panel">
+        <div class="panel-title">» CONTROLES</div>
+        <div class="panel-body" style="font-size:11px; color:#aaa; line-height:1.9;">
+          <div style="color:#00ffff; margin-bottom:4px;">PONG</div>
+          W / S → mover paddle
+          <br><br>
+          <div style="color:#00ffff; margin-bottom:4px;">SNAKE</div>
+          ↑↓←→ → mover cobra
+          <br><br>
+          <div style="color:#00ffff; margin-bottom:4px;">TETRIS</div>
+          ←→ mover | ↓ cair<br>
+          ↑ girar | ESPAÇO drop
+          <br><br>
+          <div style="color:#00ffff; margin-bottom:4px;">SPACE INVADERS</div>
+          A / D → mover<br>
+          ESPAÇO → atirar
+        </div>
+      </div>
+
+      <!-- WEBRING -->
+      <div class="panel">
+        <div class="panel-title">» WEBRING</div>
+        <div class="panel-body">
+          <div class="webring">
+            <a href="#">◄◄</a>
+            <span style="color:#888; font-size:10px;">ARCADE<br>WEB RING</span>
+            <a href="#">►►</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-copy">© 1998 Retro Games Archive — Todos os direitos reservados</div>
+    <div class="footer-copy" style="margin-top:4px; color:#333;">
+      Melhor visualizado em: Netscape Navigator 4.0+ | Resolução: 800×600 | 256 cores
+    </div>
+    <div class="footer-badges">
+      <span class="badge green">HTML 4.0</span>
+      <span class="badge blue">NETSCAPE</span>
+      <span class="badge red">JAVA ENABLED</span>
+      <span class="badge yel">BEST 800×600</span>
+    </div>
+  </footer>
+
+</div><!-- /wrapper -->
+
+<script>
+  // ===== PIXEL ART LOGO =====
+  // 10x10 grid — a simple pixel game controller / joystick
+  const logoColors = [
+    'e','e','e','p','p','p','p','e','e','e',
+    'e','e','p','p','p','p','p','p','e','e',
+    'e','p','p','b','b','b','b','p','p','e',
+    'p','p','b','b','y','y','b','b','p','p',
+    'p','b','b','y','y','y','y','b','b','p',
+    'p','b','b','y','y','y','y','b','b','p',
+    'p','p','b','b','y','y','b','b','p','p',
+    'e','p','p','b','b','b','b','p','p','e',
+    'e','e','p','p','p','p','p','p','e','e',
+    'e','e','e','p','p','p','p','e','e','e',
+  ];
+  const logo = document.getElementById('pixelLogo');
+  logoColors.forEach(c => {
+    const d = document.createElement('div');
+    d.className = c;
+    logo.appendChild(d);
+  });
+
+  // ===== SPACESHIP SPRITE =====
+  // 7x6 grid
+  const shipPx = [
+    'e','e','e','s','e','e','e',
+    'e','e','s','s','s','e','e',
+    'e','s','s','s','s','s','e',
+    's','s','y','s','y','s','s',
+    's','s','s','s','s','s','s',
+    's','e','s','e','s','e','s',
+  ];
+  const shipEl = document.getElementById('ship');
+  shipPx.forEach(c => {
+    const d = document.createElement('div');
+    d.className = c;
+    shipEl.appendChild(d);
+  });
+
+  // ===== INVADER SPRITE =====
+  // 8x6 grid
+  const invPx = [
+    'e','i','e','e','e','e','i','e',
+    'e','e','i','e','e','i','e','e',
+    'e','i','i','i','i','i','i','e',
+    'i','i','e','i','i','e','i','i',
+    'i','i','i','i','i','i','i','i',
+    'i','e','i','e','e','i','e','i',
+  ];
+  const invEl = document.getElementById('invader');
+  invPx.forEach(c => {
+    const d = document.createElement('div');
+    d.className = c;
+    invEl.appendChild(d);
+  });
+
+  // ===== VISITOR COUNTER =====
+  // Simulates a counter stored/read from localStorage
+  const COUNTER_KEY = 'retro_visitor_count';
+  let count = parseInt(localStorage.getItem(COUNTER_KEY) || '0', 10);
+
+  // Increment on each visit (cap at 1M for aesthetics)
+  count = Math.min(count + Math.floor(Math.random() * 3) + 1, 999999);
+  localStorage.setItem(COUNTER_KEY, count);
+
+  // Display with leading zeros (6 digits)
+  document.getElementById('visitorCounter').textContent =
+    String(count).padStart(6, '0');
+
+  // Random online users 1-9
+  document.getElementById('onlineCount').textContent =
+    Math.floor(Math.random() * 8) + 1;
+</script>
+</body>
+</html>
